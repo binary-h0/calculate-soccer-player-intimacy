@@ -2,6 +2,7 @@
 import requests
 import time
 import random
+import io
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -40,27 +41,44 @@ def getNewPageLink(savePath, start, end):
             f.write(link+'\n')
         f.close()
 
-
-getNewPageLink('./src/news_page_links.txt', 1, 10)
-
-# 웹드라이버 종료
-driver.quit()
+    # 웹드라이버 종료
+    driver.quit()
 
 
-# # 뉴스 기사 HTML 소스코드 가져오기
-# res = requests.get(news_url)
-# html = res.text
+def getNewsPageData(file_link, save_link):
+    urls = []
+    driver_path = "../chromedriver"
+    driver = webdriver.Chrome(driver_path)
+    with open(file_link, "r") as f:
+        url = f.readline()
+        while url:
+            urls.append(url.strip())
+            url = f.readline()
+        f.close()
+    for i in urls:
+        print(i)
 
-# # BeautifulSoup 객체 생성
-# soup = BeautifulSoup(html, "html.parser")
+    with io.open(save_link, "a", encoding='utf-8') as f:
+        for url in urls:
+            print("REQUEST: %s" % url)
+            driver.get(url.strip())
+            title = driver.find_elements(
+                By.XPATH, '//*[@id="content"]/div/div[1]/div/div[1]/h4')
+            f.write(title[0].text+'\n')
 
-# # 뉴스 기사 제목 추출
-# title = soup.select_one('div.title > h4').get_text()
+            content = driver.find_elements(
+                By.XPATH, '//*[@id="newsEndContents"]')
+            token = content[0].text.split('\n')
+            for i in range(len(token) - 18):
+                if len(token[i].rstrip()) != 0:
+                    f.write(token[i].rstrip() + '\n')
 
-# # 뉴스 기사 본문 추출
-# content = soup.select_one('div._article_body_contents').get_text().replace(
-#     '\n', '').replace('\t', '').strip()
+            time.sleep(1)
+        f.close()
 
-# # 추출한 제목과 본문 출력
-# print(title)
-# print(content)
+    # 웹드라이버 종료
+    driver.quit()
+
+
+# getNewPageLink('./src/news_page_links.txt', 1, 10)
+getNewsPageData('./src/news_page_links.txt', './src/page_data.txt')
