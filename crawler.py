@@ -6,35 +6,44 @@ import io
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
-def getNewPageLink(savePath, start, end):
+def getNewPageLink(savePath, m):
     # 크롬 드라이버 경로 설정
     driver_path = "../chromedriver"
 
     # 웹드라이버 실행
     driver = webdriver.Chrome(driver_path)
     stack = []
-    for i in range(start, end+1):
-        # 크롤링할 웹페이지 주소
-        url = "https://sports.news.naver.com/kfootball/news/index?isphoto=N&type=latest&page=%d" % i
-        print("REQUEST: %s" % url)
+    month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    for day in range(1, month[m-1] + 1):
+        page = 1
+        headLink = "0"
+        while page < 30:
+            url = "https://sports.news.naver.com/kfootball/news/index?page=%d&date=202303%02d&isphoto=N&type=latest" % (
+                page, day)
+            print("REQUEST: %s" % url)
+            driver.get(url)
+            wait = WebDriverWait(driver, 10)
+            links = wait.until(EC.presence_of_all_elements_located(
+                (By.XPATH, '//*[@id="_newsList"]/ul/li/div/a')))
 
-        # 웹페이지 열기
-        driver.get(url)
+            _headLink = links[0].get_attribute("href")
+            _headLink = _headLink[len(_headLink)-10:len(_headLink)]
+            if headLink == _headLink:
+                break
+            headLink = _headLink
 
-        # 각 뉴스 기사의 링크 추출
-        links = driver.find_elements(
-            By.XPATH, '//*[@id="_newsList"]/ul/li/div/a')
+            for link in links:
+                href = link.get_attribute("href")
+                print("HREF:", href)
+                stack.append(href)
 
-        for link in links:
-            href = link.get_attribute("href")
-            print("ELEM:", link)
-            print("HREF:", href)
-            stack.append(href)
-            # print("GET PAGE LINK: %s" % link)
-        r = random.randrange(5, 10)
-        time.sleep(1)
+            page += 1
+            print(headLink)
+            time.sleep(1)
     # 저장
     with open(savePath, "a") as f:
         for link in stack:
@@ -80,5 +89,5 @@ def getNewsPageData(file_link, save_link):
     driver.quit()
 
 
-# getNewPageLink('./src/news_page_links.txt', 1, 10)
-getNewsPageData('./src/news_page_links.txt', './src/page_data.txt')
+getNewPageLink('./src/news_page_links.txt', 1, 10)
+# getNewsPageData('./src/news_page_links.txt', './src/page_data.txt')
